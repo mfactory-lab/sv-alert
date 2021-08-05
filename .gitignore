@@ -1,0 +1,7 @@
+#*.class
+#*.log
+.bsp
+.idea
+target/
+secrets.sh
+secrets.env

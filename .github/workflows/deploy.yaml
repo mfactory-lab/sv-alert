@@ -1,0 +1,73 @@
+name: Deploy Docker Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'version'
+        required: true
+        default: 'latest'
+      environment:
+        description: 'environment (prod/stage)'
+        required: true
+        default: 'stage'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: print inputs
+        run: |
+          echo "version: ${{github.event.inputs.version}}"
+          echo "environment: ${{github.event.inputs.environment}}"
+
+      - name: install ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install ansible curl unzip --yes
+
+      - name: create ansible key
+        run: |
+          echo "${{secrets.ANSIBLE_KEY}}" > ./ansible_key
+          chmod 400 ./ansible_key
+
+      - name: update hosts.yaml
+        run: |
+          sed -i 's/KAFKA_PROXY_ENDPOINT_IP/${{secrets.KAFKA_PROXY_ENDPOINT_IP}}/g' ansible/inventory/hosts.yaml
+          sed -i 's/TELEGRAM_BOT_IP/${{secrets.TELEGRAM_BOT_IP}}/g' ansible/inventory/hosts.yaml
+          cat ansible/inventory/hosts.yaml
+
+      - name: set stage environment
+        if: ${{ github.event.inputs.environment != 'prod'}}
+        run: |
+          echo "PORT=8081" >> $GITHUB_ENV
+          echo "STAGE PORT: $PORT"
+          echo "BOT_TOKEN=${{secrets.BOT_TOKEN_STAGE}}" >> $GITHUB_ENV
+          echo "using stage telegram bot secret "
+
+      - name: set prod environment
+        if: ${{ github.event.inputs.environment == 'prod' }}
+        run: |
+          echo "PORT=8080" >> $GITHUB_ENV
+          echo "PROD PORT: $PORT"
+          echo "BOT_TOKEN=${{secrets.BOT_TOKEN_PROD}}" >> $GITHUB_ENV
+          echo "using prod telegram bot secret "
+
+      - name: deploy all
+        run: |
+          cd ansible
+          ansible-playbook ./playbooks/pb_all.yaml \
+          --private-key ./../ansible_key \
+          -e "BOOTSTRAP_SERVERS=\"${{secrets.BOOTSTRAP_SERVERS}}\"" \
+          -e "SASL_JAAS_CONFIG=\"${{secrets.SASL_JAAS_CONFIG}}\"" \
+          -e "BOT_TOKEN=\"${BOT_TOKEN}\"" \
+          -e "GITHUB_USERNAME=$GITHUB_ACTOR" \
+          -e "GITHUB_TOKEN=\"${{secrets.GITHUB_TOKEN}}\"" \
+          -e "VERSION=${{ github.event.inputs.version }}" \
+          -e "ENVIRONMENT=${{ github.event.inputs.environment }}" \
+          -e "PORT=$PORT" \
+          -e "HTTP_USER=\"${{secrets.HTTP_USER}}\"" \
+          -e "HTTP_PASSWORD=\"${{secrets.HTTP_PASSWORD}}\"" \

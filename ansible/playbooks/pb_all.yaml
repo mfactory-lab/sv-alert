@@ -1,0 +1,19 @@
+---
+- name: prepare
+  hosts: all
+  become: yes
+  roles:
+    - prepare_ubuntu
+
+- name: install kafka proxy endpoint
+  hosts: kafka_proxy_endpoint
+  become: yes
+  roles:
+    - kafka_proxy_endpoint
+
+- name: install telegram bot
+  hosts: telegram_bot
+  become: yes
+  roles:
+    - telegram_bot
+

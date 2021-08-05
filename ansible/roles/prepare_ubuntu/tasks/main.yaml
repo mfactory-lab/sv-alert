@@ -1,0 +1,30 @@
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install additinal packages
+  become: yes
+  apt:
+    pkg:
+      - docker.io
+      - python3
+      - python3-pip
+  tags:
+    - packages
+
+- name: Install python packages
+  pip:
+    name:
+      - docker
+    state: present
+    executable: pip3
+  tags:
+    - packages
+
+- name: Log into private registry and force re-authorization
+  community.docker.docker_login:
+    registry_url: ghcr.io
+    username: "{{ GITHUB_USERNAME }}"
+    password: "{{ GITHUB_TOKEN }}"
+    reauthorize: yes
+

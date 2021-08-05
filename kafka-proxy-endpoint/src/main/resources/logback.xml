@@ -1,0 +1,39 @@
+<configuration>
+    <appender name="DEFAULT" target="System.out" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>[%date{ISO8601}] [%-5level] [%logger] [%thread] [%X{akkaSource}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="COLOR" target="System.out"  class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%cyan([%date{ISO8601}]) %highlight([%level]) %magenta([%logger]) %gray([%thread]) [%X{akkaSource}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+
+    <appender name="ASYNC" class="ch.qos.logback.classic.AsyncAppender">
+        <queueSize>1024</queueSize>
+        <neverBlock>true</neverBlock>
+        <appender-ref ref="COLOR" />
+    </appender>
+
+    <root level="${ch.mfactory.root.level:-INFO}">
+        <appender-ref ref="ASYNC"/>
+    </root>
+
+<!--
+
+    <logger name="org.apache.kafka" level="INFO"/>
+    <logger name="akka.kafka.internal" level="INFO"/>
+    <logger name="akka.actor" level="INFO"/>
+    <logger name="slick" level="INFO"/>
+-->
+
+
+    <logger name="org.http4s.server.middleware" level="INFO"/>
+
+    <logger name="ch.mfactory" level="${ch.mfactory.app.level:-INFO}"/>
+
+
+</configuration>

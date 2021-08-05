@@ -1,0 +1,17 @@
+---
+all:
+  children:
+    remote:
+      vars:
+        ansible_user: root
+      children:
+        kafka_proxy_endpoint:
+          vars:
+            some_var: ""
+          hosts:
+            KAFKA_PROXY_ENDPOINT_IP
+        telegram_bot:
+          vars:
+            some_var: ""
+          hosts:
+            TELEGRAM_BOT_IP

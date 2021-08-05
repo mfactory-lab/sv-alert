@@ -1,0 +1,144 @@
+name: Publish Docker Images
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  context:
+    runs-on: ubuntu-latest
+    name: Setup Context Variables
+    outputs:
+      VERSION: ${{ steps.version.outputs.VERSION }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - id: version
+        name: Set Env Variable
+        run: |
+          VERSION=$(sh ./version.sh)
+          echo "VERSION=$VERSION"
+          echo "::set-output name=VERSION::$VERSION"
+
+      - name: Update Version
+        run: |
+          echo ${{ steps.version.outputs.VERSION }}
+          echo "ThisBuild / version := \"${{ steps.version.outputs.VERSION }}\"" > version.sbt
+          cat version.sbt
+
+      - name: Archive versionsbt
+        uses: actions/upload-artifact@v2
+        with:
+          name: updated-version
+          path: version.sbt
+
+  kafka_end_point:
+    runs-on: ubuntu-latest
+    name: Build Kafka Proxy Endpoint Docker Image
+    needs: [context]
+    steps:
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: Download version.sbt
+      uses: actions/download-artifact@v2
+      with:
+        name: updated-version
+
+    - name: Run tests
+      run: sbt clean kafkaProxyEndpoint/test
+
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@v1
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: build docker image and publish it to Github Packages
+      run: sbt kafkaProxyEndpoint/docker:publish
+
+#    - name: build docker image and publish it to Github Packages
+#      run: sbt kafkaProxyEndpoint/docker:publishLocal
+
+  telegram-bot:
+    runs-on: ubuntu-latest
+    name: Build Telegram Bot Docker Image
+    needs: [context]
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: Download version.sbt
+        uses: actions/download-artifact@v2
+        with:
+          name: updated-version
+
+      - name: Run tests
+        run: sbt clean telegramBot/test
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: build docker image and publish it to Github Packages
+        run: sbt telegramBot/docker:publish
+
+#      - name: build docker image and publish it to Github Packages
+#        run: sbt telegramBot/docker:publishLocal
+
+
+  bump_version_and_set_tag:
+    runs-on: ubuntu-latest
+    needs: [context, kafka_end_point, telegram-bot]
+    steps:
+      - name: checkout
+        uses: actions/checkout@v2
+
+      - name: Download version.sbt
+        uses: actions/download-artifact@v2
+        with:
+          name: updated-version
+
+      - name: Bump Version
+        run: |
+          echo "VERSION: ${{ needs.context.outputs.VERSION }}"
+          echo "NEW_VERSION=$(echo ${{ needs.context.outputs.VERSION }} | awk -F. -v OFS=. '{$NF++;print}')" >> $GITHUB_ENV
+
+      - name: Update version.sbt
+        run: |
+          echo "ThisBuild / version := \"$NEW_VERSION-SNAPSHOT\"" > version.sbt
+          cat version.sbt
+
+      - name: Commit files
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit -m "Bump Version" -a
+
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v5.6
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: ${{ needs.context.outputs.VERSION }}
+
+      - name: push
+        run: |
+          git fetch origin
+          git checkout -b develop origin/develop
+          git merge main
+          git push origin develop
+
+
+
+
+
+
+
+

@@ -1,0 +1,7 @@
+---
+- name: install kafka proxy endpoint
+  hosts: kafka_proxy_endpoint
+  become: yes
+  roles:
+    - prepare_ubuntu
+    - kafka_proxy_endpoint

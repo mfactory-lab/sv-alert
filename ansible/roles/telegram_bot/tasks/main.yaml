@@ -1,0 +1,21 @@
+- name: Create telegram_bot docker container
+  docker_container:
+    name: "telegram_bot_{{ ENVIRONMENT }}"
+    image: ghcr.io/alexanderray/sv-alert-telegram-bot:{{ VERSION }}
+    restart_policy: always
+    restart: yes
+    recreate: yes
+    pull: yes
+    container_default_behavior: no_defaults
+    env:
+      BOOTSTRAP_SERVERS: "{{ BOOTSTRAP_SERVERS }}"
+      SASL_JAAS_CONFIG: "{{ SASL_JAAS_CONFIG }}"
+      BOT_TOKEN: "{{ BOT_TOKEN }}"
+      ENVIRONMENT: "{{ ENVIRONMENT }}"
+  tags:
+    - docker
+
+
+
+
+

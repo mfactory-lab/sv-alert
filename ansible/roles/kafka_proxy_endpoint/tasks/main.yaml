@@ -1,0 +1,25 @@
+- name: Create kafka_proxy_endpoint docker container
+  docker_container:
+    name: "kafka_proxy_endpoint_{{ ENVIRONMENT }}"
+    image: ghcr.io/alexanderray/sv-alert-kafka-proxy-endpoint:{{ VERSION }}
+    restart_policy: always
+    restart: yes
+    recreate: yes
+    pull: yes
+    container_default_behavior: no_defaults
+    ports:
+      - "{{ PORT }}:3000"
+    env:
+      BOOTSTRAP_SERVERS: "{{ BOOTSTRAP_SERVERS }}"
+      SASL_JAAS_CONFIG: "{{ SASL_JAAS_CONFIG }}"
+      ENVIRONMENT: "{{ ENVIRONMENT }}"
+      HTTP_USER: "{{ HTTP_USER }}"
+      HTTP_PASSWORD: "{{ HTTP_PASSWORD }}"
+      HOST: "0.0.0.0"
+  tags:
+    - docker
+
+
+
+
+

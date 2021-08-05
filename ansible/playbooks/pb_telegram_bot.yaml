@@ -1,0 +1,7 @@
+---
+- name: install telegram bot
+  hosts: telegram_bot
+  become: yes
+  roles:
+    - prepare_ubuntu
+    - telegram_bot
