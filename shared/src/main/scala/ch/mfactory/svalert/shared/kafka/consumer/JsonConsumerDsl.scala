@@ -7,6 +7,8 @@ import fs2.kafka._
 import io.circe.{Decoder, Json, parser}
 import cats.implicits._
 import ch.mfactory.svalert.shared.kafka.KafkaService
+import ch.mfactory.svalert.shared.services.Common
+import fs2.Stream
 import org.apache.kafka.clients.consumer
 
 import java.nio.charset.StandardCharsets
@@ -17,8 +19,6 @@ trait JsonConsumerDsl[F[_]] {
 }
 
 object JsonConsumerDsl {
-
-
 
   def apply[F[_]](implicit ev: JsonConsumerDsl[F]): JsonConsumerDsl[F] = ev
 
@@ -80,7 +80,7 @@ object JsonConsumerDsl {
 
       implicit lazy val badImplicit: Timer[F] = timer
 
-      val stream: fs2.Stream[F, Unit] =
+      val consumerStream =
         consumer
           .stream
           .evalMap(_.bitraverse(fromJson[F, K], fromJson[F, V]))
@@ -95,16 +95,21 @@ object JsonConsumerDsl {
             else in.void
           }
 
-      consumer.subscribeTo(config.common.topic) >>
-        stream
-          .handleErrorWith{ t =>
-             fs2.Stream
-                .emit(println(t.getLocalizedMessage))
-                .append(stream)
+     lazy val restartingStream: Stream[F, Unit] =
+        Stream.eval(consumer.subscribeTo(config.common.topic))
+          .append(consumerStream)
+          .handleErrorWith(t =>
+            Stream.eval(
+              Concurrent[F].delay(println(t.getLocalizedMessage)) >>
+                consumer.unsubscribe
+            ).append(restartingStream)
+          )
 
-          }
-          .compile
-          .drain
+
+      restartingStream
+        .compile
+        .drain
+
     }
 
   }

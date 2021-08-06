@@ -13,9 +13,12 @@ import sttp.client3.http4s.Http4sBackend
 import cats.implicits._
 import ch.mfactory.svalert.shared.kafka.consumer.JsonConsumerDsl
 import ch.mfactory.svalert.shared.kafka.producer.JsonProducerDsl
+import ch.mfactory.svalert.shared.services.Common
 import ch.mfactory.svalert.telegramBot.model.Subscriptions
 import ch.mfactory.svalert.telegramBot.notifications.{NotificationService, NotificationsDsl}
 import ch.mfactory.svalert.telegramBot.subscription.{SubscriptionDsl, SubscriptionService}
+
+import scala.concurrent.duration.DurationInt
 
 object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] = {
@@ -88,7 +91,7 @@ object Main extends IOApp {
 
     Stream.empty.repeat
 //      .concurrently(SchedulerService.schedulerStream(timer, ref))
-      .concurrently(startBackgroundService(
+      .concurrently(Common.startBackgroundService(timer)(
           BotService.registerOnCommandPingPongHandler() >>
           BotService.registerOnCommandInfoHandler() >>
           BotService.registerOnCommandHelpHandler() >>
@@ -97,10 +100,10 @@ object Main extends IOApp {
           BotService.registerOnCommandListHandler(ref) >>
           BotDsl[F].run()
       ))
-      .concurrently(startBackgroundService(
+      .concurrently(Common.startBackgroundService(timer)(
           SubscriptionService.consumeSubscriptionEvents(ref)
       ))
-      .concurrently(startBackgroundService(
+      .concurrently(Common.startBackgroundService(timer)(
         NotificationService.consumeNotificationEvent(ref)
       ))
       .compile
@@ -109,17 +112,6 @@ object Main extends IOApp {
   }
 
 
-  private def startBackgroundService[
-    F[_]: Sync
-  ](service: F[Unit]): Stream[F, Unit] = {
-    val stream = Stream.eval(service)
 
-    stream
-      .handleErrorWith{ t =>
-        Stream
-          .emit(println(t.getLocalizedMessage))
-          .append(stream)
-      }
-  }
 
 }
