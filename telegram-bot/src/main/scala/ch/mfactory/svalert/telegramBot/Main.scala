@@ -1,11 +1,11 @@
 package ch.mfactory.svalert.telegramBot
 
+import cats.MonadError
 import cats.effect.concurrent.Ref
-import cats.effect.{Blocker, ConcurrentEffect, ContextShift, ExitCode, IO, IOApp, Resource, Timer}
+import cats.effect.{Blocker, ConcurrentEffect, ContextShift, ExitCode, IO, IOApp, Resource, Sync, Timer}
 import ch.mfactory.svalert.shared.config.ConfigService
 import ch.mfactory.svalert.telegramBot.bot.{BotDsl, BotService}
 import ch.mfactory.svalert.telegramBot.config.Config
-import ch.mfactory.svalert.telegramBot.scheduler.SchedulerService
 import fs2.Stream
 import sttp.capabilities.fs2.Fs2Streams
 import sttp.client3.SttpBackend
@@ -88,8 +88,7 @@ object Main extends IOApp {
 
     Stream.empty.repeat
 //      .concurrently(SchedulerService.schedulerStream(timer, ref))
-      .concurrently(
-        Stream.eval(
+      .concurrently(startBackgroundService(
           BotService.registerOnCommandPingPongHandler() >>
           BotService.registerOnCommandInfoHandler() >>
           BotService.registerOnCommandHelpHandler() >>
@@ -97,18 +96,30 @@ object Main extends IOApp {
           BotService.registerOnCommandUnSubscribeHandler() >>
           BotService.registerOnCommandListHandler(ref) >>
           BotDsl[F].run()
-        )
-      )
-      .concurrently(
-        Stream.eval(SubscriptionService.consumeSubscriptionEvents(ref))
-      )
-      .concurrently(
-        Stream.eval(NotificationService.consumeNotificationEvent(ref))
-      )
+      ))
+      .concurrently(startBackgroundService(
+          SubscriptionService.consumeSubscriptionEvents(ref)
+      ))
+      .concurrently(startBackgroundService(
+        NotificationService.consumeNotificationEvent(ref)
+      ))
       .compile
       .last
       .map(_ => ExitCode.Success)
   }
 
+
+  private def startBackgroundService[
+    F[_]: Sync
+  ](service: F[Unit]): Stream[F, Unit] = {
+    val stream = Stream.eval(service)
+
+    stream
+      .handleErrorWith{ t =>
+        Stream
+          .emit(println(t.getLocalizedMessage))
+          .append(stream)
+      }
+  }
 
 }

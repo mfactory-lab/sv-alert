@@ -98,9 +98,10 @@ object JsonConsumerDsl {
       consumer.subscribeTo(config.common.topic) >>
         stream
           .handleErrorWith{ t =>
-            fs2.Stream.eval(
-              Concurrent[F].delay(println(t.getLocalizedMessage))
-            ).through(_ => stream)
+             fs2.Stream
+                .emit(println(t.getLocalizedMessage))
+                .append(stream)
+
           }
           .compile
           .drain

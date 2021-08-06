@@ -1,12 +1,12 @@
 package ch.mfactory.svalert.rpcEndPoint
 
 import cats.effect.{Blocker, ConcurrentEffect, ContextShift}
-import ch.mfactory.svalert.rpcEndPoint.rpc.cli.CliRpcDsl
+import ch.mfactory.svalert.rpcEndPoint.rpc.cli.json.JsonCliRpcDsl
 import ch.mfactory.svalert.shared.shell.CliDsl
 
 trait Interpreters[F[_]] {
   implicit def shellDsl: CliDsl[F]
-  implicit def shellRpcDsl: CliRpcDsl[F]
+  implicit def shellRpcDsl: JsonCliRpcDsl[F]
 }
 
 object Interpreters {
@@ -18,7 +18,7 @@ object Interpreters {
 
     override implicit def shellDsl: CliDsl[F] = CliDsl.interpreter(cs, blocker)
 
-    override implicit def shellRpcDsl: CliRpcDsl[F] = CliRpcDsl.interpreter()
+    override implicit def shellRpcDsl: JsonCliRpcDsl[F] = JsonCliRpcDsl.interpreter()
   }
 
 }

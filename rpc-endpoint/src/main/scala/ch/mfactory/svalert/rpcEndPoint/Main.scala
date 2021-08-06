@@ -10,7 +10,7 @@ import org.log4s.getLogger
 import org.http4s.rho.swagger.syntax.{io => ioSwagger}
 import org.http4s.server.blaze.BlazeServerBuilder
 import cats.implicits._
-import ch.mfactory.svalert.rpcEndPoint.rpc.cli.CliRpcDsl
+import ch.mfactory.svalert.rpcEndPoint.rpc.cli.json.JsonCliRpcDsl
 import org.http4s.implicits._
 
 import java.util.concurrent.Executors
@@ -55,7 +55,7 @@ object Main extends IOApp {
   }
 
   def runApplication[
-    F[+_] : ConcurrentEffect : CliRpcDsl
+    F[+_] : ConcurrentEffect : JsonCliRpcDsl
   ](config: Config, blocker: Blocker, cs: ContextShift[F], timer: Timer[F], swaggerSyntax: SwaggerSyntax[F]): F[ExitCode] = {
     implicit val badImplicit1: ContextShift[F] = cs
     implicit val badImplicit2: Timer[F] = timer

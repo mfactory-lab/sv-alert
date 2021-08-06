@@ -1,17 +1,18 @@
 package ch.mfactory.svalert.rpcEndPoint
 
 import cats.effect.Async
-import ch.mfactory.svalert.rpcEndPoint.rpc.cli.{CliRpcDsl, CliRpcService}
+import ch.mfactory.svalert.rpcEndPoint.rpc.cli.CliRpcService
 import org.http4s.circe.{CirceEntityDecoder, CirceEntityEncoder}
 import org.http4s.rho.swagger.SwaggerSyntax
 import org.http4s.rho.{RhoRoutes, http4sLiteralsSyntax}
 import cats.implicits._
 import ch.mfactory.svalert.shared.model.rpc.cli.{SolanaStakeAccount, SolanaValidators}
 import SolanaValidators._
+import ch.mfactory.svalert.rpcEndPoint.rpc.cli.json.{JsonCliRpcDsl, JsonCliRpcService}
 
 @SuppressWarnings(Array("org.wartremover.warts.NonUnitStatements"))
 class Routes[
-  F[+_] : Async : CliRpcDsl
+  F[+_] : Async : JsonCliRpcDsl
 ](swaggerSyntax: SwaggerSyntax[F])
   extends RhoRoutes[F] with CirceEntityEncoder with CirceEntityDecoder
 {
@@ -24,7 +25,7 @@ class Routes[
     List("solana", "cli") @@
     GET / "cli" / "validators" |>>
     {
-      CliRpcService
+      JsonCliRpcService
         .solanaValidators[F]()
         .map{(x: SolanaValidators.Validators) =>
           println(x.show.take(50))
@@ -37,7 +38,7 @@ class Routes[
     List("solana", "cli") @@
       GET / "cli" / "stake-account" / pathVar[String] |>>
     { value: String =>
-      CliRpcService
+      JsonCliRpcService
         .stakeAccount[F](value)
         .map((x: SolanaStakeAccount.StakeAccount) => Ok(x))
 
@@ -47,7 +48,7 @@ class Routes[
     List("test") @@
       GET / "cli" / "test"  |>>
     {
-      CliRpcService
+      JsonCliRpcService
         .test[F]()
         .map((x: SolanaValidators.Validators) => Ok(x))
 
