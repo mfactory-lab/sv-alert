@@ -10,16 +10,28 @@ object Common {
   def startBackgroundService[
     F[_]: Sync
   ](timer: Timer[F])(service: F[Unit]): Stream[F, Unit] = {
-    lazy val stream: Stream[F, Unit] = Stream
-      .eval(service)
-      .handleErrorWith{ t =>
-        Stream.eval(
-          Sync[F].delay(println(t.getLocalizedMessage)) >>
-            timer.sleep(5.seconds)
-        ).append(stream)
-      }
 
-    stream
+    implicit val badImplicit: Timer[F] = timer
+    Stream.retry(
+      service,
+      5.seconds,
+      _ => 5.seconds,
+      Int.MaxValue,
+      _ => true
+    )
+
+//
+//    lazy val stream: Stream[F, Unit] = Stream
+//      .eval(service)
+//      .mask
+//      .handleErrorWith{ t =>
+//        Stream.eval(
+//          Sync[F].delay(println(t.getLocalizedMessage)) >>
+//            timer.sleep(5.seconds)
+//        ).append(stream)
+//      }
+//
+//    stream
   }
 
 }
